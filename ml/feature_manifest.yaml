@@ -1,0 +1,115 @@
+version: "1.0"
+description: "Canonical feature manifest for FarmSight AI Water-Stress ML Model"
+
+features:
+  - name: ndvi_current
+    type: numeric
+    unit: unitless
+    required: true
+    missing_data_behavior: accept_null
+    description: "Current Normalized Difference Vegetation Index"
+  
+  - name: ndvi_7d_change
+    type: numeric
+    unit: unitless
+    required: true
+    missing_data_behavior: accept_null
+    description: "NDVI change over 7 days"
+
+  - name: ndvi_30d_change
+    type: numeric
+    unit: unitless
+    required: true
+    missing_data_behavior: accept_null
+    description: "NDVI change over 30 days"
+
+  - name: ndmi_current
+    type: numeric
+    unit: unitless
+    required: true
+    missing_data_behavior: accept_null
+    description: "Current Normalized Difference Moisture Index"
+
+  - name: ndmi_change
+    type: numeric
+    unit: unitless
+    required: true
+    missing_data_behavior: accept_null
+    description: "NDMI change over temporal window"
+
+  - name: rainfall_7d
+    type: numeric
+    unit: mm
+    required: true
+    missing_data_behavior: accept_null
+    description: "Accumulated rainfall over 7 days"
+
+  - name: rainfall_30d
+    type: numeric
+    unit: mm
+    required: true
+    missing_data_behavior: accept_null
+    description: "Accumulated rainfall over 30 days"
+
+  - name: rainfall_anomaly
+    type: numeric
+    unit: mm
+    required: true
+    missing_data_behavior: accept_null
+    description: "Rainfall deviation from historical baseline"
+
+  - name: temperature_mean
+    type: numeric
+    unit: degC
+    required: true
+    missing_data_behavior: accept_null
+    description: "Mean temperature over recent temporal window"
+
+  - name: temperature_anomaly
+    type: numeric
+    unit: degC
+    required: true
+    missing_data_behavior: accept_null
+    description: "Temperature deviation from historical baseline"
+
+  - name: soil_moisture
+    type: numeric
+    unit: m3_m3
+    required: true
+    missing_data_behavior: accept_null
+    description: "Current soil moisture context"
+
+  - name: soil_moisture_change
+    type: numeric
+    unit: m3_m3
+    required: true
+    missing_data_behavior: accept_null
+    description: "Soil moisture change"
+
+  - name: crop
+    type: categorical
+    options: ["rice", "groundnut", "maize"]
+    required: true
+    missing_data_behavior: accept_null
+    description: "Crop type"
+
+  - name: crop_stage
+    type: categorical
+    options: ["initial", "vegetative", "reproductive", "maturity", "unknown"]
+    required: true
+    missing_data_behavior: accept_null
+    description: "Crop growth stage based on sowing date"
+
+  - name: historical_deviation
+    type: numeric
+    unit: unitless
+    required: true
+    missing_data_behavior: accept_null
+    description: "Feature deviation from same-field historical baseline"
+
+  - name: neighboring_deviation
+    type: numeric
+    unit: unitless
+    required: true
+    missing_data_behavior: accept_null
+    description: "Feature deviation from comparable nearby fields"
