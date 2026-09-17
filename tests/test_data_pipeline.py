@@ -1,9 +1,12 @@
+import io
+import json
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
 from data.pipeline import AnalysisContext, DataPipeline, Observation, ndmi, ndvi
-from data.providers import FixtureProvider
+from data.providers import FixtureProvider, OpenMeteoProvider
 from ml.inference import score_water_stress
 from ml.models import WaterStressModel
 from ml.preprocessing import FEATURE_ORDER, preprocess_features
@@ -76,6 +79,35 @@ def test_weather_windows_and_anomalies():
     assert result["features"]["rainfall_anomaly"] == -20
     assert result["features"]["temperature_mean"] == 30
     assert result["features"]["temperature_anomaly"] == 2
+
+
+def test_open_meteo_requests_30_day_history_and_feeds_weather_windows(monkeypatch):
+    requested = {}
+    days = [(REF.date() - timedelta(days=offset)).isoformat() for offset in range(29, -1, -1)]
+    response = {"daily": {"time": days, "precipitation_sum": [1.0] * 30,
+                          "temperature_2m_mean": [30.0] * 30}}
+
+    class FakeResponse(io.StringIO):
+        def __enter__(self): return self
+        def __exit__(self, *args): self.close()
+
+    def fake_urlopen(url, timeout):
+        requested.update(parse_qs(urlparse(url).query))
+        return FakeResponse(json.dumps(response))
+
+    monkeypatch.setattr("data.providers.urlopen", fake_urlopen)
+    provider = OpenMeteoProvider(endpoint="https://weather.example/archive")
+    live_context = AnalysisContext("farm-1", "zone-1", "rice", date(2026, 7, 1), REF,
+                                   location=(13.08, 80.27))
+
+    result = DataPipeline([provider]).build(live_context)
+
+    assert requested["start_date"] == ["2026-08-19"]
+    assert requested["end_date"] == ["2026-09-17"]
+    assert len(provider.fetch(live_context)) == 60
+    assert result["features"]["rainfall_7d"] == 7
+    assert result["features"]["rainfall_30d"] == 30
+    assert result["features"]["temperature_mean"] == 30
 
 
 def test_anomaly_without_baseline_remains_missing():

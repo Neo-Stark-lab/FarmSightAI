@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Protocol, Sequence
 from urllib.parse import urlencode
 from urllib.request import urlopen
@@ -40,6 +40,7 @@ class OpenMeteoProvider:
     unless a separate approved baseline provider supplies them.
     """
     name = "open_meteo"
+    WEATHER_HISTORY_DAYS = 30
 
     def __init__(self, endpoint: str | None = None, timeout_seconds: int = 15):
         self.endpoint = endpoint or os.getenv(
@@ -51,9 +52,12 @@ class OpenMeteoProvider:
         if not context.location:
             raise ValueError("Open-Meteo requires a representative latitude/longitude")
         latitude, longitude = context.location
+        # The pipeline's 30-day window is start-exclusive/end-inclusive, so
+        # request 30 daily records including the analysis reference date.
+        start_date = context.reference_time.date() - timedelta(days=self.WEATHER_HISTORY_DAYS - 1)
         query = urlencode({
             "latitude": latitude, "longitude": longitude,
-            "start_date": (context.reference_time.date()).isoformat(),
+            "start_date": start_date.isoformat(),
             "end_date": context.reference_time.date().isoformat(),
             "daily": "precipitation_sum,temperature_2m_mean", "timezone": "UTC",
         })

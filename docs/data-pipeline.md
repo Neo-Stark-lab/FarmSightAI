@@ -29,6 +29,11 @@ summed and temperature is averaged. Anomalies only exist when a provider gives
 an explicit historical baseline. Soil moisture is modelled context, never
 field-scale ground truth; its spatial resolution is retained.
 
+For operational weather, `OpenMeteoProvider` requests the inclusive 30-day
+daily range ending on `reference_time` (reference date minus 29 days through
+the reference date). This supplies both 7-day and 30-day aggregations; it does
+not create a historical anomaly baseline.
+
 Historical deviation uses a `comparable: true` same-field baseline; neighbouring
 deviation additionally requires a privacy-filtered, comparable baseline from
 upstream. Absent comparability leaves the value null.
