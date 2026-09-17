@@ -35,7 +35,11 @@ def result(zone_id,run_id=None):
     if run_id and run_id not in repo.runs: raise DomainError("analysis_not_found","analysis run was not found",404)
     run=repo.runs.get(run_id) if run_id else max(runs,key=lambda r:r["requested_at"],default=None)
     if run and run["farm_id"] != zone["farm_id"]: raise DomainError("analysis_not_found","analysis run does not belong to this farm",404)
-    return zone,run,repo.results.get((run["id"],zone_id)) if run else None
+    res = repo.results.get((run["id"],zone_id)) if run else None
+    if not res: return zone, run, None, None
+    ev = repo.evidence.get(res["evidence_id"])
+    rec = repo.recommendations.get(res["recommendation_id"])
+    return zone, run, ev, rec
 def freshness(item):
     if not item: return {"overall_status":"missing","items":[]}
     metadata=item["feature_set"]["feature_metadata"]
@@ -45,12 +49,12 @@ def freshness(item):
 def zones(farm_id:str,analysis_run_id:str|None=None):
     farms.get(farm_id); items=[]
     for zone in [z for z in repo.zones.values() if z["farm_id"]==farm_id]:
-        _,run,item=result(zone["id"],analysis_run_id); items.append({"zone":zone,"latest_prediction":item["prediction"] if item else {"status":"insufficient_data","risk_level":"unknown"},"data_freshness":freshness(item),"recommendation_status":item["recommendation"]["status"] if item else "not_available"})
+        _,run,ev,rec=result(zone["id"],analysis_run_id); items.append({"zone":zone,"latest_prediction":ev["prediction"] if ev else {"status":"insufficient_data","risk_level":"unknown"},"data_freshness":freshness(ev),"recommendation_status":rec["recommendation"]["status"] if rec else "not_available"})
     return envelope(farm_id=farm_id,analysis_run_id=analysis_run_id,zones=items)
 @app.get(API_PREFIX+"/zones/{zone_id}/evidence")
 def evidence(zone_id:str,analysis_run_id:str|None=None):
-    zone,run,item=result(zone_id,analysis_run_id); fs=item["feature_set"] if item else None
-    return envelope(zone_id=zone_id,analysis_run_id=run["id"] if run else None,prediction=item["prediction"] if item else None,evidence=[] if not fs else [{"feature_name":k,"value":v,"unit":fs["feature_metadata"][k]["unit"],"source":fs["feature_metadata"][k].get("source"),"source_observation_ids":fs["feature_metadata"][k].get("source_observation_ids",[]),"observation_time":fs["feature_metadata"][k].get("observation_timestamp"),"retrieval_timestamp":fs["feature_metadata"][k].get("retrieval_timestamp"),"spatial_aggregation":fs["feature_metadata"][k].get("spatial_aggregation"),"spatial_resolution_m":fs["feature_metadata"][k].get("spatial_resolution_m"),"calculation":fs["feature_metadata"][k].get("calculation"),"freshness":fs["feature_metadata"][k]["freshness"],"missing_reason":fs["feature_metadata"][k].get("missing_reason"),"quality_flags":[]} for k,v in fs["features"].items()],data_freshness=freshness(item),limitations=item["recommendation"]["limitations"] if item else ["No analysis available"])
+    zone,run,ev,rec=result(zone_id,analysis_run_id); fs=ev["feature_set"] if ev else None
+    return envelope(zone_id=zone_id,analysis_run_id=run["id"] if run else None,prediction=ev["prediction"] if ev else None,evidence=[] if not fs else [{"feature_name":k,"value":v,"unit":fs["feature_metadata"][k]["unit"],"source":fs["feature_metadata"][k].get("source"),"source_observation_ids":fs["feature_metadata"][k].get("source_observation_ids",[]),"observation_time":fs["feature_metadata"][k].get("observation_timestamp"),"retrieval_timestamp":fs["feature_metadata"][k].get("retrieval_timestamp"),"spatial_aggregation":fs["feature_metadata"][k].get("spatial_aggregation"),"spatial_resolution_m":fs["feature_metadata"][k].get("spatial_resolution_m"),"calculation":fs["feature_metadata"][k].get("calculation"),"freshness":fs["feature_metadata"][k]["freshness"],"missing_reason":fs["feature_metadata"][k].get("missing_reason"),"quality_flags":[]} for k,v in fs["features"].items()],data_freshness=freshness(ev),limitations=rec["recommendation"]["limitations"] if rec else ["No analysis available"])
 @app.get(API_PREFIX+"/zones/{zone_id}/recommendation")
 def recommendation(zone_id:str,analysis_run_id:str|None=None):
-    _,run,item=result(zone_id,analysis_run_id); return envelope(zone_id=zone_id,analysis_run_id=run["id"] if run else None,recommendation=item["recommendation"] if item else {"status":"not_available","action":None,"limitations":["No analysis available"]})
+    _,run,ev,rec=result(zone_id,analysis_run_id); return envelope(zone_id=zone_id,analysis_run_id=run["id"] if run else None,recommendation=rec["recommendation"] if rec else {"status":"not_available","action":None,"limitations":["No analysis available"]})

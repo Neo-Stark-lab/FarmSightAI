@@ -5,6 +5,7 @@ from uuid import uuid4
 from data.pipeline import AnalysisContext, DataPipeline
 from data.providers import FixtureProvider, OpenMeteoProvider, GoogleEarthEngineProvider, ERA5LandProvider
 from backend.app.config import PROVIDER_MODE
+from backend.app.geometry import validate_geometry, validate_point, is_point_within_boundary
 from ml.inference import score_water_stress
 from backend.app.rules.recommendation_engine import RecommendationEngine
 
@@ -13,13 +14,12 @@ class DomainError(Exception):
 def utcnow(): return datetime.now(timezone.utc)
 
 def geometry(value, point=False):
-    wanted = "Point" if point else None
-    if not isinstance(value, dict) or (point and value.get("type") != wanted) or (not point and value.get("type") not in {"Polygon","MultiPolygon"}): raise DomainError("invalid_geometry", "must be GeoJSON Point, Polygon, or MultiPolygon")
-    coords = value.get("coordinates", []); ring = coords if point else (coords[0] if value["type"] == "Polygon" else coords[0][0] if coords else [])
     if point:
-        valid = len(coords) == 2 and all(isinstance(n, (int, float)) for n in coords)
-    else: valid = len(ring) >= 4 and ring[0] == ring[-1] and all(len(p) >= 2 and all(isinstance(n, (int,float)) and -180 <= p[0] <= 180 and -90 <= p[1] <= 90 for n in p[:2]) for p in ring)
-    if not valid: raise DomainError("invalid_geometry", "coordinates are malformed")
+        valid, msg = validate_point(value)
+    else:
+        valid, msg = validate_geometry(value)
+    if not valid:
+        raise DomainError("invalid_geometry", msg)
 
 def fingerprint(value): return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",",":"), default=str).encode()).hexdigest()
 def area_hectares(boundary):
@@ -42,6 +42,8 @@ class FarmService:
         except (KeyError, ValueError): raise DomainError("invalid_date", "sowing_date must be ISO-8601")
         if sowing > date.today(): raise DomainError("invalid_date", "sowing_date cannot be in the future")
         geometry(value.get("boundary")); geometry(value.get("location"), True)
+        if not is_point_within_boundary(value["location"], value["boundary"]):
+            raise DomainError("invalid_location", "farm location is outside boundary")
         try: ZoneInfo(value.get("timezone", "Asia/Kolkata"))
         except Exception: raise DomainError("invalid_farm", "timezone must be an IANA timezone")
         if not isinstance(value.get("name"), str) or not value["name"].strip(): raise DomainError("invalid_farm", "name is required")
@@ -77,7 +79,11 @@ class AnalysisService:
             context=AnalysisContext(farm_id=farm["id"],zone_id=zone["id"],crop=farm["crop"],sowing_date=date.fromisoformat(farm["sowing_date"]),reference_time=datetime.fromisoformat(run["analysis_reference_time"]),analysis_run_id=run_id,feature_set_id=str(uuid4()),request_id=str(uuid4()),boundary=zone["geometry"],location=tuple(farm["location"]["coordinates"][::-1]))
             features=DataPipeline(self.providers).build(context); response=score_water_stress(features); prediction=response["prediction"]
             recommendation=self.rules.evaluate({"prediction":prediction,"features":features["features"],"feature_metadata":features["feature_metadata"],"quality_status":features["quality_status"]})
-            self.repo.results[(run_id,zone["id"])]={"feature_set":features,"prediction":prediction,"recommendation":recommendation}; run["completed_zone_count"]+=1; partial |= features["quality_status"]!="complete" or prediction["status"]!="valid"
+            evidence_id = str(uuid4())
+            rec_id = str(uuid4())
+            self.repo.evidence[evidence_id] = {"id": evidence_id, "zone_id": zone["id"], "analysis_run_id": run_id, "feature_set": features, "prediction": prediction, "created_at": utcnow().isoformat()}
+            self.repo.recommendations[rec_id] = {"id": rec_id, "zone_id": zone["id"], "analysis_run_id": run_id, "recommendation": recommendation, "created_at": utcnow().isoformat()}
+            self.repo.results[(run_id,zone["id"])]={"evidence_id": evidence_id, "recommendation_id": rec_id}; run["completed_zone_count"]+=1; partial |= features["quality_status"]!="complete" or prediction["status"]!="valid"
           run["status"]="partial" if partial else "completed"
         except Exception:
           run.update(status="failed",failure_code="analysis_execution_failed",failure_message="Analysis could not be completed safely")
