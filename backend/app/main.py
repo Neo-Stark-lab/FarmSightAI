@@ -11,7 +11,7 @@ app=FastAPI(title="FarmSightAI")
 app.add_middleware(CORSMiddleware,allow_origins=CORS_ORIGINS,allow_methods=["GET","POST"],allow_headers=["Content-Type","Idempotency-Key"])
 def envelope(**body): return {"request_id":str(uuid4()),**body}
 @app.exception_handler(DomainError)
-async def errors(_, exc): return JSONResponse(exc.status,envelope(error={"code":exc.code,"message":exc.message,"details":[]}))
+async def errors(_, exc): return JSONResponse(status_code=exc.status,content=envelope(error={"code":exc.code,"message":exc.message,"details":[]}))
 @app.get("/health")
 def health(): return envelope(status="ok")
 @app.post(API_PREFIX+"/farms",status_code=201)
