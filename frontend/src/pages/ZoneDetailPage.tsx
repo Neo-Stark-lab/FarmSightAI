@@ -63,6 +63,11 @@ export default function ZoneDetailPage() {
             </h2>
             
             <div className="mt-6 pt-4 border-t border-black/10">
+              {pred?.probability !== null && pred?.probability !== undefined && (
+                <p className="text-sm font-bold text-gray-600 mb-1 flex items-center gap-2">
+                  <ShieldAlert size={16} /> Risk probability: <span className="text-black">{(pred.probability * 100).toFixed(1)}%</span>
+                </p>
+              )}
               <p className="text-sm font-bold text-gray-600 mb-1 flex items-center gap-2">
                 <ShieldAlert size={16} /> Confidence: <span className="capitalize text-black">{pred?.confidence.level || 'Unknown'}</span>
               </p>
@@ -138,7 +143,7 @@ export default function ZoneDetailPage() {
                     <tr key={idx} className="border-b last:border-0">
                       <td className="px-4 py-3 font-medium text-gray-900 capitalize">{ev.feature_name.replace(/_/g, ' ')}</td>
                       <td className="px-4 py-3">{ev.value !== null ? `${ev.value} ${ev.unit}` : <span className="text-gray-400">Missing</span>}</td>
-                      <td className="px-4 py-3 flex items-center gap-1 text-gray-500"><Database size={14}/> {ev.source}</td>
+                      <td className="px-4 py-3 flex items-center gap-1 text-gray-500"><Database size={14}/> {typeof ev.source === 'object' && ev.source ? ev.source.provider : ev.source}</td>
                     </tr>
                   ))}
                   {evidence.length === 0 && (
@@ -151,17 +156,18 @@ export default function ZoneDetailPage() {
 
           <div className="bg-farm-light p-6 rounded-xl border border-farm-DEFAULT/30 shadow-sm">
             <h3 className="text-xl font-bold mb-4 text-farm-dark">Agricultural Recommendation</h3>
-            {recommendation?.status === 'available' ? (
+            {recommendation?.status === 'active' || recommendation?.status === 'available' ? (
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-lg border border-farm-DEFAULT/20 shadow-sm">
-                  <p className="font-bold text-gray-900 text-lg">{recommendation.action}</p>
+                  <p className="font-bold text-gray-900 text-lg">{recommendation.action_type || recommendation.action}</p>
                 </div>
                 
-                {recommendation.explanations && recommendation.explanations.length > 0 && (
+                {(recommendation.explanation || (recommendation.explanations && recommendation.explanations.length > 0)) && (
                   <div>
                     <h4 className="text-sm font-bold text-gray-700 uppercase mb-2">Why?</h4>
                     <ul className="list-disc pl-5 text-gray-600 space-y-1">
-                      {recommendation.explanations.map((exp, idx) => <li key={idx}>{exp}</li>)}
+                      {recommendation.explanation && <li>{recommendation.explanation}</li>}
+                      {recommendation.explanations && recommendation.explanations.map((exp, idx) => <li key={idx}>{exp}</li>)}
                     </ul>
                   </div>
                 )}

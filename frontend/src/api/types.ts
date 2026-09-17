@@ -45,7 +45,7 @@ export interface Prediction {
     method: string;
     source_observation_ids: string[];
   }[];
-  status: 'complete' | 'insufficient_data' | 'failed';
+  status: 'valid' | 'insufficient_data' | 'failed';
 }
 
 export interface DataFreshness {
@@ -79,14 +79,16 @@ export interface EvidenceItem {
   feature_name: string;
   value: number;
   unit: string;
-  source: string;
+  source: any;
   observation_time: string;
   quality_flags: string[];
 }
 
 export interface Recommendation {
-  status: 'available' | 'not_available';
+  status: 'active' | 'not_available' | 'available';
+  action_type?: string | null;
   action: string | null;
   limitations: string[];
+  explanation?: string;
   explanations?: string[];
 }

@@ -57,7 +57,7 @@ export default function DashboardMap({ farm, zones, selectedZoneId, onZoneSelect
           );
           
           let riskColor = RISK_COLORS.unknown;
-          if (z.latest_prediction?.status === 'complete') {
+          if (z.latest_prediction?.status === 'valid') {
             riskColor = RISK_COLORS[z.latest_prediction.risk_level] || RISK_COLORS.unknown;
           }
 
