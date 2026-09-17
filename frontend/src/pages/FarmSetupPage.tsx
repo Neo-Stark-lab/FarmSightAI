@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import SetupMap from '../components/Map/SetupMap';
@@ -16,6 +16,13 @@ export default function FarmSetupPage() {
   const [boundary, setBoundary] = useState<number[][][] | null>(null);
   const [center, setCenter] = useState<[number, number] | null>(null);
 
+  const idempotencyKeyRef = useRef<string | null>(null);
+
+  // A genuinely new submission clears the old key
+  useEffect(() => {
+    idempotencyKeyRef.current = null;
+  }, [name, crop, sowingDate, boundary, center]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !boundary || !center || !sowingDate) {
@@ -26,7 +33,9 @@ export default function FarmSetupPage() {
     setLoading(true);
     setError(null);
     try {
-      const idempotencyKey = crypto.randomUUID();
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = crypto.randomUUID();
+      }
       const res = await apiClient.createFarm({
         name,
         crop,
@@ -34,7 +43,7 @@ export default function FarmSetupPage() {
         location: { type: 'Point', coordinates: center },
         boundary: { type: 'Polygon', coordinates: boundary },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      }, idempotencyKey);
+      }, idempotencyKeyRef.current);
       
       navigate(`/farms/${res.farm.id}`);
     } catch (err: any) {
@@ -63,8 +72,9 @@ export default function FarmSetupPage() {
       <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-8">
         <div className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Farm Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Farm Name</label>
             <input 
+              id="name"
               type="text"
               required
               value={name}
@@ -88,8 +98,9 @@ export default function FarmSetupPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sowing Date</label>
+            <label htmlFor="sowingDate" className="block text-sm font-medium text-gray-700 mb-1">Sowing Date</label>
             <input 
+              id="sowingDate"
               type="date"
               required
               value={sowingDate}

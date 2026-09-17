@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import type { Farm, ZoneStatus, AnalysisRun } from '../api/types';
@@ -39,13 +39,21 @@ export default function DashboardPage() {
     }
   };
 
+  const analyzeKeyRef = useRef<string | null>(null);
+
   const handleAnalyze = async () => {
     if (!farmId) return;
     try {
       setAnalyzing(true);
-      const idempotencyKey = crypto.randomUUID();
-      const res = await apiClient.analyzeFarm(farmId, idempotencyKey);
+      if (!analyzeKeyRef.current) {
+        analyzeKeyRef.current = crypto.randomUUID();
+      }
+      const res = await apiClient.analyzeFarm(farmId, analyzeKeyRef.current);
       setRun(res.analysis_run);
+      
+      // On success, clear the key so a future new analysis gets a new key
+      analyzeKeyRef.current = null;
+      
       // Mock polling delay
       setTimeout(() => {
         loadFarmData();
@@ -61,8 +69,8 @@ export default function DashboardPage() {
     return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-farm-DEFAULT" size={48} /></div>;
   }
 
-  if (error || !farm) {
-    return <div className="p-10 text-red-500 font-bold">Error: {error}</div>;
+  if (!farm) {
+    return <div className="p-10 text-red-500 font-bold">Error: Farm not found</div>;
   }
 
   const zonesNeedingAttention = zones.filter(z => 
@@ -71,6 +79,11 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 w-full space-y-8">
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+          <p className="text-red-700 font-bold">{error}</p>
+        </div>
+      )}
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{farm.name}</h1>
