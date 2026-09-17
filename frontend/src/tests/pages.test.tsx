@@ -4,8 +4,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import FarmSetupPage from '../pages/FarmSetupPage';
 import DashboardPage from '../pages/DashboardPage';
 import ZoneDetailPage from '../pages/ZoneDetailPage';
+import App from '../App';
 import { apiClient } from '../api/client';
 import { FIXTURE_FARM, FIXTURE_ANALYSIS_RUN, FIXTURE_ZONES, FIXTURE_EVIDENCE, FIXTURE_RECOMMENDATION } from '../api/fixtures';
+
+let mockIsDemoMode = true;
 
 // Mock the API client
 vi.mock('../api/client', () => ({
@@ -16,7 +19,8 @@ vi.mock('../api/client', () => ({
     getZones: vi.fn(),
     getZoneEvidence: vi.fn(),
     getZoneRecommendation: vi.fn(),
-  }
+  },
+  get IS_DEMO_MODE() { return mockIsDemoMode; }
 }));
 
 // Mock crypto.randomUUID for predictable but trackable keys
@@ -50,6 +54,7 @@ describe('Lap 5 Behavior Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     uuidCounter = 0;
+    mockIsDemoMode = true;
   });
 
   describe('FARM SETUP', () => {
@@ -193,7 +198,7 @@ describe('Lap 5 Behavior Tests', () => {
       expect(screen.getAllByText(/high/i).length).toBeGreaterThan(0); // from fixture
       expect(screen.getByText(/85\.0%/)).toBeInTheDocument(); // Expect probability since it's in the fixture
 
-      // EXPLAINABILITY (↑ for increases_risk)
+      // EXPLAINABILITY (â†‘ for increases_risk)
       expect(screen.getAllByText(/Increases Risk/i).length).toBeGreaterThan(0);
       
       // EVIDENCE
@@ -206,4 +211,78 @@ describe('Lap 5 Behavior Tests', () => {
       expect(screen.getByText(/Recommendation based on modeled coarse soil moisture/i)).toBeInTheDocument();
     });
   });
+
+  describe('HARDENING TESTS', () => {
+    it('displays DEMO DATA badge in demo mode', () => {
+      mockIsDemoMode = true;
+      render(<App />);
+      expect(screen.getByText(/DEMO DATA/i)).toBeInTheDocument();
+    });
+
+    it('displays REAL DATA badge in real mode', () => {
+      mockIsDemoMode = false;
+      render(<App />);
+      expect(screen.getByText(/REAL DATA/i)).toBeInTheDocument();
+    });
+
+    it('renders probability and confidence separately', async () => {
+      const mockPred: any = {
+        ...FIXTURE_ZONES[0].latest_prediction,
+        probability: 0.642135,
+        confidence: { level: 'medium', basis: [] }
+      };
+      vi.mocked(apiClient.getZones).mockResolvedValue({ request_id: '1', farm_id: 'f-1', zones: [{ ...FIXTURE_ZONES[0], latest_prediction: mockPred }] });
+      vi.mocked(apiClient.getZoneEvidence).mockResolvedValue({ request_id: '1', prediction: mockPred, evidence: [], data_freshness: FIXTURE_ZONES[0].data_freshness, limitations: [] });
+      vi.mocked(apiClient.getZoneRecommendation).mockResolvedValue({ request_id: '1', recommendation: FIXTURE_RECOMMENDATION });
+
+      render(<MemoryRouter initialEntries={['/farms/f-1/zones/z-1']}><Routes><Route path="/farms/:farmId/zones/:zoneId" element={<ZoneDetailPage />} /></Routes></MemoryRouter>);
+      
+      await waitFor(() => expect(screen.getByText(/Zone z-1/i)).toBeInTheDocument());
+      expect(screen.getByText(/64\.2%/)).toBeInTheDocument();
+      expect(screen.getByText(/medium/i)).toBeInTheDocument();
+    });
+
+    it('does not render probability for insufficient_data', async () => {
+      const mockPred: any = {
+        ...FIXTURE_ZONES[0].latest_prediction,
+        status: 'insufficient_data',
+        probability: null,
+        confidence: { level: 'low', basis: [] }
+      };
+      vi.mocked(apiClient.getZones).mockResolvedValue({ request_id: '1', farm_id: 'f-1', zones: [{ ...FIXTURE_ZONES[0], latest_prediction: mockPred }] });
+      vi.mocked(apiClient.getZoneEvidence).mockResolvedValue({ request_id: '1', prediction: mockPred, evidence: [], data_freshness: FIXTURE_ZONES[0].data_freshness, limitations: [] });
+      vi.mocked(apiClient.getZoneRecommendation).mockResolvedValue({ request_id: '1', recommendation: FIXTURE_RECOMMENDATION });
+
+      render(<MemoryRouter initialEntries={['/farms/f-1/zones/z-1']}><Routes><Route path="/farms/:farmId/zones/:zoneId" element={<ZoneDetailPage />} /></Routes></MemoryRouter>);
+      
+      await waitFor(() => expect(screen.getByText(/Zone z-1/i)).toBeInTheDocument());
+      expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+      expect(screen.getByText(/low/i)).toBeInTheDocument();
+    });
+
+    it('renders API recommendation rather than hardcoded string', async () => {
+      const mockRec: any = { status: 'active', action_type: 'PRIORITIZE_FIELD_CHECK', action: 'Custom action string', limitations: [], explanation: 'Test explanation' };
+      vi.mocked(apiClient.getZones).mockResolvedValue({ request_id: '1', farm_id: 'f-1', zones: FIXTURE_ZONES });
+      vi.mocked(apiClient.getZoneEvidence).mockResolvedValue({ request_id: '1', prediction: FIXTURE_ZONES[0].latest_prediction, evidence: [], data_freshness: FIXTURE_ZONES[0].data_freshness, limitations: [] });
+      vi.mocked(apiClient.getZoneRecommendation).mockResolvedValue({ request_id: '1', recommendation: mockRec });
+
+      render(<MemoryRouter initialEntries={['/farms/f-1/zones/z-1']}><Routes><Route path="/farms/:farmId/zones/:zoneId" element={<ZoneDetailPage />} /></Routes></MemoryRouter>);
+      
+      await waitFor(() => expect(screen.getByText(/PRIORITIZE_FIELD_CHECK/i)).toBeInTheDocument());
+      expect(screen.getByText(/Test explanation/i)).toBeInTheDocument();
+    });
+
+    it('renders missing evidence as missing rather than fabricating', async () => {
+      const mockEv: any = [{ feature_name: 'ndvi_current', value: null, unit: 'unitless', source: { provider: 'test' }, observation_time: '', quality_flags: ['missing'] }];
+      vi.mocked(apiClient.getZones).mockResolvedValue({ request_id: '1', farm_id: 'f-1', zones: FIXTURE_ZONES });
+      vi.mocked(apiClient.getZoneEvidence).mockResolvedValue({ request_id: '1', prediction: FIXTURE_ZONES[0].latest_prediction, evidence: mockEv, data_freshness: FIXTURE_ZONES[0].data_freshness, limitations: [] });
+      vi.mocked(apiClient.getZoneRecommendation).mockResolvedValue({ request_id: '1', recommendation: FIXTURE_RECOMMENDATION });
+
+      render(<MemoryRouter initialEntries={['/farms/f-1/zones/z-1']}><Routes><Route path="/farms/:farmId/zones/:zoneId" element={<ZoneDetailPage />} /></Routes></MemoryRouter>);
+      
+      await waitFor(() => expect(screen.getAllByText(/ndvi current/i).length).toBeGreaterThan(0));
+      expect(screen.getByText(/Missing/)).toBeInTheDocument();
+    });
+  });
 });
+
