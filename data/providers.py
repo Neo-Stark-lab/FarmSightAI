@@ -126,14 +126,13 @@ class GoogleEarthEngineProvider:
             mask = qa.bitwiseAnd(1 << 10).eq(0).And(qa.bitwiseAnd(1 << 11).eq(0))
             masked_img = img.updateMask(mask)
             
-            stats = masked_img.select(['B8', 'B4', 'B11']).reduceRegion(
+            scaled_img = masked_img.select(['B8', 'B4', 'B11']).divide(10000)
+            stats = scaled_img.reduceRegion(
                 reducer=self.ee.Reducer.mean(),
                 geometry=geom,
                 scale=10,
                 maxPixels=1e9
             )
-            # scale the results back to 0-1 for Sentinel 2 SR
-            stats = stats.map(lambda k, v: self.ee.Number(v).divide(10000))
             
             return self.ee.Feature(None, {
                 'system:time_start': img.get('system:time_start'),
@@ -235,9 +234,16 @@ class ERA5LandProvider:
                 scale=11132, # ERA5-Land resolution is ~11km
                 maxPixels=1e9
             )
+            
+            sm = self.ee.Algorithms.If(
+                stats.contains('volumetric_soil_water_layer_1'),
+                stats.get('volumetric_soil_water_layer_1'),
+                None
+            )
+            
             return self.ee.Feature(None, {
                 'system:time_start': day.millis(),
-                'soil_moisture': stats.get('volumetric_soil_water_layer_1')
+                'soil_moisture': sm
             })
             
         try:
