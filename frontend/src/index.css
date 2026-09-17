@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --color-farm-light: #e8f5e9;
+  --color-farm-DEFAULT: #4caf50;
+  --color-farm-dark: #2e7d32;
+  --color-risk-low: #4caf50;
+  --color-risk-moderate: #ff9800;
+  --color-risk-high: #f44336;
+  --color-risk-unknown: #9e9e9e;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 font-sans antialiased;
+  }
+}
