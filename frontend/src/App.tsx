@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Sprout } from 'lucide-react';
+import { IS_DEMO_MODE } from './api/client';
 import LandingPage from './pages/LandingPage';
 import FarmSetupPage from './pages/FarmSetupPage';
 import DashboardPage from './pages/DashboardPage';
@@ -16,7 +17,7 @@ function App() {
               FarmSight AI
             </Link>
             <div className="text-sm opacity-80 bg-white/10 px-3 py-1 rounded-full">
-              DEMO DATA — Fixture analysis
+              {IS_DEMO_MODE ? 'DEMO DATA — Fixture analysis' : 'REAL DATA — Live providers'}
             </div>
           </div>
         </header>

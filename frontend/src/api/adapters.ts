@@ -26,13 +26,5 @@ export const adaptRecommendation = (data: any): Recommendation => {
 
 export const adaptPredictionStatus = (prediction: any): Prediction => {
     if (!prediction) return prediction;
-    
-    // The backend uses 'valid' for successful predictions, but the frontend types expect 'complete'.
-    // If we receive 'valid', map it to 'complete'.
-    const mappedStatus = prediction.status === 'valid' ? 'complete' : prediction.status;
-
-    return {
-        ...prediction,
-        status: mappedStatus
-    };
+    return prediction as Prediction;
 };

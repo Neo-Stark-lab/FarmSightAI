@@ -191,7 +191,7 @@ describe('Lap 5 Behavior Tests', () => {
       // CONFIDENCE RENDERING
       expect(screen.getByText(/Confidence:/i)).toBeInTheDocument();
       expect(screen.getAllByText(/high/i).length).toBeGreaterThan(0); // from fixture
-      expect(screen.queryByText(/%/)).not.toBeInTheDocument(); // No fake probabilities!
+      expect(screen.getByText(/85\.0%/)).toBeInTheDocument(); // Expect probability since it's in the fixture
 
       // EXPLAINABILITY (↑ for increases_risk)
       expect(screen.getAllByText(/Increases Risk/i).length).toBeGreaterThan(0);

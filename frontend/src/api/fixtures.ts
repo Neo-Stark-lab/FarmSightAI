@@ -51,12 +51,13 @@ export const FIXTURE_ZONES: ZoneStatus[] = [
         level: 'high',
         basis: ['fresh_satellite', 'fresh_weather']
       },
+      probability: 0.85,
       contributions: [
         { feature: 'soil_moisture', direction: 'increases_risk', magnitude: 0.15, method: 'shap', source_observation_ids: [] },
         { feature: 'rainfall_30d', direction: 'increases_risk', magnitude: 0.12, method: 'shap', source_observation_ids: [] },
         { feature: 'ndvi_current', direction: 'increases_risk', magnitude: 0.08, method: 'shap', source_observation_ids: [] }
       ],
-      status: 'complete'
+      status: 'valid'
     },
     data_freshness: {
       overall_status: 'fresh',
@@ -93,7 +94,7 @@ export const FIXTURE_ZONES: ZoneStatus[] = [
       contributions: [
         { feature: 'rainfall_30d', direction: 'decreases_risk', magnitude: 0.10, method: 'shap', source_observation_ids: [] }
       ],
-      status: 'complete'
+      status: 'valid'
     },
     data_freshness: {
       overall_status: 'stale',
