@@ -61,7 +61,7 @@ class AnalysisService:
     def _providers(self):
         if PROVIDER_MODE == "fixture": return (FixtureProvider(()),)
         if PROVIDER_MODE == "weather": return (OpenMeteoProvider(),)
-        if PROVIDER_MODE == "live": return (OpenMeteoProvider(), GoogleEarthEngineProvider(), ERA5LandProvider())
+        if PROVIDER_MODE == "real": return (OpenMeteoProvider(), GoogleEarthEngineProvider(), ERA5LandProvider())
         raise RuntimeError("unsupported PROVIDER_MODE")
     def submit(self, farm_id, payload, key):
         FarmService(self.repo).get(farm_id)

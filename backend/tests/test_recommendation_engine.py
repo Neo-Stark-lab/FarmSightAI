@@ -1,6 +1,6 @@
 import unittest
 
-from app.rules import RecommendationEngine
+from backend.app.rules.recommendation_engine import RecommendationEngine
 
 
 ALL_FEATURES = ["ndvi_current", "ndvi_7d_change", "ndvi_30d_change", "ndmi_current", "ndmi_change", "rainfall_7d", "rainfall_30d", "rainfall_anomaly", "temperature_mean", "temperature_anomaly", "soil_moisture", "soil_moisture_change", "historical_deviation", "neighboring_deviation"]
