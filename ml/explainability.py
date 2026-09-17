@@ -13,20 +13,23 @@ class SHAPExplainer:
     def explain_instance(self, X: pd.DataFrame, predicted_class: int):
         """
         Returns feature contributions for a single instance.
-        Only considers features that are not NaN.
+        Always evaluates contributions relative to the HIGH risk class (class index 2)
+        so that 'increases_risk' and 'decreases_risk' are globally consistent.
         """
-        # SHAP values for the predicted class
+        # SHAP values for the HIGH risk class (class 2)
+        HIGH_RISK_CLASS_INDEX = 2
         shap_values = self.explainer.shap_values(X)
         
         # shap_values shape: (num_samples, num_features, num_classes) or (num_samples, num_features)
-        # XGBClassifier multi-class returns list of arrays (one per class)
         if isinstance(shap_values, list):
-            class_shap = shap_values[predicted_class][0]
+            # scikit-learn / older shap versions might return a list of arrays
+            class_shap = shap_values[HIGH_RISK_CLASS_INDEX][0]
         else:
             # If shap returns (num_samples, num_features, num_classes)
             if len(shap_values.shape) == 3:
-                class_shap = shap_values[0, :, predicted_class]
+                class_shap = shap_values[0, :, HIGH_RISK_CLASS_INDEX]
             else:
+                # Binary classification fallback, though our model is multi-class
                 class_shap = shap_values[0]
 
         contributions = []
@@ -38,7 +41,7 @@ class SHAPExplainer:
                 
             contribution_value = class_shap[i]
             
-            # Determine direction based on contribution to the predicted class
+            # Positive SHAP for HIGH risk class means it increases risk
             if contribution_value > 0.01:
                 direction = "increases_risk"
             elif contribution_value < -0.01:
