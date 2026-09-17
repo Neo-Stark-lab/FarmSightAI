@@ -1,4 +1,4 @@
-import type { Farm, ZoneStatus, EvidenceItem, Recommendation, AnalysisRun } from './types';
+import type { Farm, ZoneStatus, EvidenceItem, Recommendation, AnalysisRun, Prediction } from './types';
 
 // The adapter layer isolates backend response structures from UI components.
 // We pass the typed API responses through these adapters so we can gracefully handle
@@ -22,4 +22,17 @@ export const adaptEvidence = (data: any[]): EvidenceItem[] => {
 
 export const adaptRecommendation = (data: any): Recommendation => {
   return data as Recommendation;
+};
+
+export const adaptPredictionStatus = (prediction: any): Prediction => {
+    if (!prediction) return prediction;
+    
+    // The backend uses 'valid' for successful predictions, but the frontend types expect 'complete'.
+    // If we receive 'valid', map it to 'complete'.
+    const mappedStatus = prediction.status === 'valid' ? 'complete' : prediction.status;
+
+    return {
+        ...prediction,
+        status: mappedStatus
+    };
 };

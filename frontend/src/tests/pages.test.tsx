@@ -171,7 +171,7 @@ describe('Lap 5 Behavior Tests', () => {
   describe('ZONE DETAILS (RISK, CONFIDENCE, EXPLAINABILITY, EVIDENCE)', () => {
     it('renders all required elements without fabricating probability', async () => {
       vi.mocked(apiClient.getZones).mockResolvedValue({ request_id: '1', farm_id: 'f-1234', zones: FIXTURE_ZONES });
-      vi.mocked(apiClient.getZoneEvidence).mockResolvedValue({ request_id: '1', evidence: FIXTURE_EVIDENCE });
+      vi.mocked(apiClient.getZoneEvidence).mockResolvedValue({ request_id: '1', prediction: FIXTURE_ZONES[0].latest_prediction, evidence: FIXTURE_EVIDENCE, data_freshness: FIXTURE_ZONES[0].data_freshness, limitations: FIXTURE_RECOMMENDATION.limitations });
       vi.mocked(apiClient.getZoneRecommendation).mockResolvedValue({ request_id: '1', recommendation: FIXTURE_RECOMMENDATION });
 
       render(
