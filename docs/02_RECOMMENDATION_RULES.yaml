@@ -1,0 +1,94 @@
+{
+  "version": "1.0",
+  "format_note": "JSON is a YAML 1.2-compatible subset, retained so the prototype can load policy without an undeclared YAML dependency.",
+  "crops": {
+    "rice": {"stages": ["initial", "vegetative", "reproductive", "maturity", "unknown"]},
+    "groundnut": {"stages": ["initial", "vegetative", "reproductive", "maturity", "unknown"]},
+    "maize": {"stages": ["initial", "vegetative", "reproductive", "maturity", "unknown"]}
+  },
+  "evidence_levels": {
+    "very_low": "No usable supporting evidence",
+    "low": "One contextual signal or data with material limitations",
+    "moderate": "Two independent usable signals",
+    "high": "Three or more independent usable signals, or high ML risk plus two signals"
+  },
+  "rules": [
+    {
+      "id": "WS001",
+      "category": "water_stress",
+      "name": "Multi-signal water-stress risk",
+      "rule_type": "project_heuristic",
+      "conditions": ["prediction.risk_level is high", "at least two fresh supporting water-stress signals", "no recent-rainfall conflict"],
+      "evidence": ["declining vegetation or moisture indicator", "negative rainfall anomaly", "declining or upstream-flagged low soil-moisture context"],
+      "recommendation": {"action_type": "CONSIDER_IRRIGATION", "priority": "high", "text": "Prioritize checking this zone and consider irrigation based on local field conditions."},
+      "explanation_template": "Water-stress risk is elevated because {supporting_signals}.",
+      "limitations": ["This does not prescribe irrigation quantity.", "Satellite and modelled soil-moisture evidence are not direct field ground truth."]
+    },
+    {
+      "id": "WS002",
+      "category": "rainfall_recovery",
+      "name": "Recent rainfall or recovery conflict",
+      "rule_type": "project_heuristic",
+      "conditions": ["water-stress evidence is present", "recent rainfall flag or non-declining vegetation/moisture indicator"],
+      "evidence": ["source-attributed recent rainfall", "stable or improving vegetation/moisture indicator"],
+      "recommendation": {"action_type": "REASSESS_AFTER_RAINFALL", "priority": "medium", "text": "Reassess this zone after recent rainfall and verify field conditions before irrigating."},
+      "explanation_template": "Water-stress signals conflict with {conflicting_signals}.",
+      "limitations": ["Recent rainfall does not prove that root-zone water is adequate."]
+    },
+    {
+      "id": "WS003",
+      "category": "data_quality",
+      "name": "Stale or incomplete evidence",
+      "rule_type": "engineering_threshold",
+      "conditions": ["prediction valid", "satellite evidence stale or key evidence missing"],
+      "evidence": ["per-feature freshness and missingness metadata"],
+      "recommendation": {"action_type": "PRIORITIZE_FIELD_CHECK", "priority": "medium", "text": "Prioritize a field check because available evidence is incomplete, stale, or conflicting."},
+      "explanation_template": "Recommendation strength is reduced by {data_limitations}.",
+      "limitations": ["Freshness status is supplied by the pipeline using source-specific configured thresholds."]
+    },
+    {
+      "id": "WS004",
+      "category": "water_stress",
+      "name": "Water-stress risk requiring verification",
+      "rule_type": "project_heuristic",
+      "conditions": ["prediction.risk_level is moderate or high", "fewer than two fresh supporting water-stress signals"],
+      "evidence": ["ML prediction plus available context"],
+      "recommendation": {"action_type": "PRIORITIZE_FIELD_CHECK", "priority": "medium", "text": "Prioritize checking this zone before making an irrigation decision."},
+      "explanation_template": "The model indicates water-stress risk, but supporting field-context evidence is limited.",
+      "limitations": ["The rule engine does not alter the ML prediction."]
+    },
+    {
+      "id": "WS005",
+      "category": "insufficient_data",
+      "name": "Insufficient evidence",
+      "rule_type": "engineering_threshold",
+      "conditions": ["prediction status is not valid or no usable evidence"],
+      "evidence": ["prediction status and missingness metadata"],
+      "recommendation": {"action_type": "SEEK_FIELD_INSPECTION", "priority": "medium", "text": "Evidence is insufficient for a reliable irrigation recommendation; inspect field conditions."},
+      "explanation_template": "A reliable recommendation is unavailable because {data_limitations}.",
+      "limitations": ["Missing values are not replaced with invented values."]
+    },
+    {
+      "id": "CS001",
+      "category": "crop_stage",
+      "name": "Reproductive-stage context",
+      "rule_type": "project_heuristic",
+      "conditions": ["crop is rice, groundnut, or maize", "crop_stage is reproductive", "water-stress risk is moderate or high"],
+      "evidence": ["upstream crop-stage context"],
+      "recommendation": {"action_type": "PRIORITIZE_FIELD_CHECK", "priority": "high", "text": "Prioritize a field check because this water-stress risk is reported during the supplied reproductive stage."},
+      "explanation_template": "Crop-stage context is {crop_stage}; prompt field verification is appropriate.",
+      "limitations": ["Stage is supplied upstream and must not be inferred from a universal calendar."]
+    },
+    {
+      "id": "WS006",
+      "category": "monitoring",
+      "name": "Monitor with no elevated recommendation trigger",
+      "rule_type": "project_heuristic",
+      "conditions": ["prediction is valid", "no higher-priority rule applies"],
+      "evidence": ["available prediction and source metadata"],
+      "recommendation": {"action_type": "MONITOR", "priority": "low", "text": "Monitor this zone and check crop condition if visible changes continue."},
+      "explanation_template": "Available evidence does not support a stronger action at this time.",
+      "limitations": ["Monitoring does not establish absence of stress."]
+    }
+  ]
+}
