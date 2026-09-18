@@ -285,8 +285,7 @@ describe('Premium UI Behavior Tests', () => {
       vi.mocked(apiClient.getZoneRecommendation).mockResolvedValue({ request_id: '1', recommendation: mockRec });
 
       render(<MemoryRouter initialEntries={['/farms/f-1/zones/z-1']}><Routes><Route path="/farms/:farmId/zones/:zoneId" element={<ZoneDetailPage />} /></Routes></MemoryRouter>);
-      
-      await waitFor(() => expect(screen.getByText(/PRIORITIZE_FIELD_CHECK/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Check this field first/i)).toBeInTheDocument());
       expect(screen.getByText(/Test explanation/i)).toBeInTheDocument();
     });
 

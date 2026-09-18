@@ -112,6 +112,9 @@ export default function ZoneDetailPage() {
                     <div className="text-3xl font-bold text-gray-400 mb-2 mt-4">N/A</div>
                   )}
                   <p className="text-gray-600 font-medium">Model confidence is <span className="capitalize font-bold text-gray-900">{pred?.confidence.level || 'Unknown'}</span></p>
+                  <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                    Confidence reflects the availability and freshness of supporting data. It is not the probability that the prediction is correct.
+                  </p>
                 </div>
                 
                 <div className="flex flex-col justify-end space-y-3">
@@ -145,7 +148,9 @@ export default function ZoneDetailPage() {
                 {recommendation?.status === 'active' || recommendation?.status === 'available' ? (
                   <div className="space-y-6">
                     <div className="text-2xl font-bold text-gray-900 tracking-tight">
-                      {recommendation.action_type || recommendation.action}
+                      {(recommendation.action_type || recommendation.action) === 'PRIORITIZE_FIELD_CHECK'
+                        ? 'Check this field first'
+                        : (recommendation.action_type || recommendation.action)}
                     </div>
                     
                     {(recommendation.explanation || (recommendation.explanations && recommendation.explanations.length > 0)) && (
@@ -184,9 +189,11 @@ export default function ZoneDetailPage() {
                   <div>
                     <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                       <Cpu size={24} className="text-blue-500" />
-                      SHAP Explainability
+                      What is influencing this risk?
                     </h3>
-                    <p className="text-gray-500 text-sm mt-1">Key features driving the XGBoost model's decision.</p>
+                    <p className="text-gray-500 text-sm mt-1">
+                      These factors influence the model's assessment. Factors shown as increasing risk push the assessment toward higher water-stress risk; decreasing factors push it away.
+                    </p>
                   </div>
                 </div>
                 
