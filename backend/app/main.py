@@ -8,14 +8,19 @@ from backend.app.services import AnalysisService, DomainError, FarmService
 
 repo=Repository(); farms=FarmService(repo); analysis=AnalysisService(repo)
 app=FastAPI(title="FarmSightAI")
-app.add_middleware(CORSMiddleware,allow_origins=CORS_ORIGINS,allow_methods=["GET","POST"],allow_headers=["Content-Type","Idempotency-Key"])
+app.add_middleware(CORSMiddleware,allow_origins=CORS_ORIGINS,allow_methods=["GET","POST"],allow_headers=["Content-Type","Idempotency-Key","X-Demo-User-Id"])
 def envelope(**body): return {"request_id":str(uuid4()),**body}
 @app.exception_handler(DomainError)
 async def errors(_, exc): return JSONResponse(status_code=exc.status,content=envelope(error={"code":exc.code,"message":exc.message,"details":[]}))
 @app.get("/health")
 def health(): return envelope(status="ok")
+@app.get(API_PREFIX+"/users/{user_id}/farms")
+def user_farms(user_id:str):
+    if user_id not in repo.users: raise DomainError("invalid_user", "User not found", 404)
+    user_farm_list = [f for f in repo.farms.values() if f.get("owner_user_id") == user_id]
+    return envelope(farms=user_farm_list)
 @app.post(API_PREFIX+"/farms",status_code=201)
-async def create_farm(request:Request,idempotency_key:str|None=Header(None,alias="Idempotency-Key")): return envelope(farm=farms.create(await request.json(),idempotency_key))
+async def create_farm(request:Request,idempotency_key:str|None=Header(None,alias="Idempotency-Key"),demo_user_id:str|None=Header(None,alias="X-Demo-User-Id")): return envelope(farm=farms.create(await request.json(),idempotency_key,demo_user_id))
 @app.get(API_PREFIX+"/farms/{farm_id}")
 def farm(farm_id:str): return envelope(farm=farms.get(farm_id))
 @app.post(API_PREFIX+"/farms/{farm_id}/analyze",status_code=202)

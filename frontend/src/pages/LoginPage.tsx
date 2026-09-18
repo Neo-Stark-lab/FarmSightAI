@@ -22,10 +22,16 @@ export default function LoginPage() {
     navigate('/farms');
   };
 
-  const handleDemoLogin = () => {
-    demoAuth.login();
+  const handleDemoLogin = (userId: string) => {
+    demoAuth.login(userId);
     navigate('/farms');
   };
+
+  const demoUsers = [
+    { id: 'user1', name: 'Arjun Kumar', email: 'arjun@example.com' },
+    { id: 'user2', name: 'Meena Ravi', email: 'meena@example.com' },
+    { id: 'user3', name: 'Kumaravel S', email: 'kumaravel@example.com' }
+  ];
 
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -49,56 +55,25 @@ export default function LoginPage() {
           <p className="text-gray-500">Sign in to your Digital Farm Twin</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
-                type="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-farm-DEFAULT/20 focus:border-farm-DEFAULT transition-shadow"
-                placeholder="farmer@example.com"
-                required
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-farm-DEFAULT/20 focus:border-farm-DEFAULT transition-shadow"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
+        <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm mb-8 text-center">
+          <strong>Demo Authentication</strong><br />
+          Select a demo account below to explore the application.
+        </div>
 
-          <button 
-            type="submit"
-            className="w-full bg-gray-900 hover:bg-black text-white font-medium py-3 rounded-xl transition-colors mt-2"
-          >
-            Continue
-          </button>
-        </form>
-
-        <div className="mt-8 pt-8 border-t border-gray-100">
-          <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm mb-4">
-            <strong>Hackathon Demo Mode:</strong> You may bypass the full authentication system to explore the application.
-          </div>
-          <button 
-            onClick={handleDemoLogin}
-            type="button"
-            className="w-full bg-farm-DEFAULT hover:bg-farm-secondary text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-farm-DEFAULT/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Continue as demo farmer <ArrowRight size={18} />
-          </button>
+        <div className="space-y-4">
+          {demoUsers.map((user) => (
+            <button
+              key={user.id}
+              onClick={() => handleDemoLogin(user.id)}
+              className="w-full text-left bg-white border border-gray-200 hover:border-farm-DEFAULT hover:shadow-md p-4 rounded-xl transition-all flex items-center justify-between group"
+            >
+              <div>
+                <p className="font-semibold text-gray-900 group-hover:text-farm-DEFAULT transition-colors">{user.name}</p>
+                <p className="text-sm text-gray-500">{user.email}</p>
+              </div>
+              <ArrowRight size={20} className="text-gray-300 group-hover:text-farm-DEFAULT transition-colors group-hover:translate-x-1" />
+            </button>
+          ))}
         </div>
       </motion.div>
     </div>

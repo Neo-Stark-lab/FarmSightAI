@@ -112,7 +112,8 @@ describe('Premium UI Behavior Tests', () => {
       await waitFor(() => {
         expect(apiClient.createFarm).toHaveBeenCalledWith(
           expect.objectContaining({ name: 'Test Farm' }),
-          'test-uuid-1'
+          'test-uuid-1',
+          undefined
         );
       });
     });
@@ -139,14 +140,14 @@ describe('Premium UI Behavior Tests', () => {
       fireEvent.click(screen.getByText(/Create Digital Farm Twin/i));
       
       await waitFor(() => expect(screen.getByText(/Network Error/i)).toBeInTheDocument());
-      expect(apiClient.createFarm).toHaveBeenCalledWith(expect.anything(), 'test-uuid-1');
+      expect(apiClient.createFarm).toHaveBeenCalledWith(expect.anything(), 'test-uuid-1', undefined);
       
       // Retry (no input changes)
       vi.mocked(apiClient.createFarm).mockResolvedValueOnce({ request_id: '123', farm: FIXTURE_FARM });
       fireEvent.click(screen.getByText(/Create Digital Farm Twin/i));
       
       await waitFor(() => {
-        expect(apiClient.createFarm).toHaveBeenLastCalledWith(expect.anything(), 'test-uuid-1');
+        expect(apiClient.createFarm).toHaveBeenLastCalledWith(expect.anything(), 'test-uuid-1', undefined);
       });
     });
   });

@@ -1,16 +1,17 @@
 import type { Farm } from '../api/types';
 
-const AUTH_KEY = 'farmsight_demo_authenticated';
+const AUTH_KEY = 'farmsightai_demo_user_id';
 const FARMS_KEY = 'farmsight_demo_farms';
 
 export const demoAuth = {
-  login: () => localStorage.setItem(AUTH_KEY, 'true'),
+  login: (userId: string) => localStorage.setItem(AUTH_KEY, userId),
   logout: () => localStorage.removeItem(AUTH_KEY),
-  isAuthenticated: () => localStorage.getItem(AUTH_KEY) === 'true',
+  isAuthenticated: () => !!localStorage.getItem(AUTH_KEY),
+  getUserId: () => localStorage.getItem(AUTH_KEY),
 };
 
-// We cannot fetch a list of farms from the backend, so we persist
-// only the successful creation records in the frontend for demo purposes.
+// We persist only the successful creation records in the frontend for purely DEMO MODE.
+// REAL mode now uses backend persistence.
 export const demoFarms = {
   addFarm: (farm: Farm) => {
     const existing = demoFarms.getFarms();

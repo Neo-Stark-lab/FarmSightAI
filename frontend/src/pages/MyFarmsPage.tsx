@@ -2,15 +2,33 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Map as MapIcon, Calendar, ArrowRight, AlertTriangle } from 'lucide-react';
-import type { Farm } from '../api/types';
-import { demoFarms } from '../utils/demoPersistence';
+import { apiClient, IS_DEMO_MODE } from '../api/client';
+import { demoAuth, demoFarms } from '../utils/demoPersistence';
 
 export default function MyFarmsPage() {
   const [farms, setFarms] = useState<Farm[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load persisted demo farms
-    setFarms(demoFarms.getFarms());
+    async function loadFarms() {
+      try {
+        const userId = demoAuth.getUserId();
+        if (!userId) return; // Protected route handles redirect
+        
+        if (IS_DEMO_MODE) {
+          setFarms(demoFarms.getFarms());
+        } else {
+          const res = await apiClient.getUserFarms(userId);
+          setFarms(res.farms);
+        }
+      } catch (err: any) {
+        setError(err.message || "Unable to load your farms. Please check that the FarmSightAI backend is running.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadFarms();
   }, []);
 
   const containerVariants = {
@@ -44,7 +62,16 @@ export default function MyFarmsPage() {
           </motion.div>
         </div>
 
-        {farms.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-farm-DEFAULT"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 text-red-800 p-6 rounded-2xl text-center max-w-2xl mx-auto shadow-sm">
+            <AlertTriangle className="mx-auto mb-2 text-red-600" size={32} />
+            <p>{error}</p>
+          </div>
+        ) : farms.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="bg-white border border-gray-200 rounded-3xl p-12 text-center max-w-2xl mx-auto shadow-sm"

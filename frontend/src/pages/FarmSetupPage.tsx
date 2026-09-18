@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../api/client';
 import SetupMap from '../components/Map/SetupMap';
 import { Sprout, Loader2, Map as MapIcon, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { demoFarms } from '../utils/demoPersistence';
+import { demoFarms, demoAuth } from '../utils/demoPersistence';
 
 export default function FarmSetupPage() {
   const navigate = useNavigate();
@@ -60,6 +60,9 @@ export default function FarmSetupPage() {
       if (!idempotencyKeyRef.current) {
         idempotencyKeyRef.current = crypto.randomUUID();
       }
+      
+      const userId = demoAuth.getUserId() || undefined;
+
       const res = await apiClient.createFarm({
         name,
         crop,
@@ -67,9 +70,9 @@ export default function FarmSetupPage() {
         location: { type: 'Point', coordinates: center },
         boundary: { type: 'Polygon', coordinates: boundary },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-      }, idempotencyKeyRef.current);
+      }, idempotencyKeyRef.current, userId);
       
-      // Save farm to demo persistence so it appears in My Farms
+      // Save farm to demo persistence so it appears in My Farms if in demo mode
       demoFarms.addFarm(res.farm);
       
       navigate(`/farms/${res.farm.id}`);

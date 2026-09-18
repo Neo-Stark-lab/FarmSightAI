@@ -32,7 +32,7 @@ def area_hectares(boundary):
 
 class FarmService:
     def __init__(self, repo): self.repo = repo
-    def create(self, value, key):
+    def create(self, value, key, owner_user_id=None):
         try: cached = self.repo.replay("farm", key, fingerprint(value))
         except ValueError: raise DomainError("idempotency_conflict", "Idempotency-Key was already used with a different request", 409)
         if cached: return cached
@@ -47,8 +47,10 @@ class FarmService:
         try: ZoneInfo(value.get("timezone", "Asia/Kolkata"))
         except Exception: raise DomainError("invalid_farm", "timezone must be an IANA timezone")
         if not isinstance(value.get("name"), str) or not value["name"].strip(): raise DomainError("invalid_farm", "name is required")
+        if owner_user_id and owner_user_id not in self.repo.users: raise DomainError("invalid_user", "owner_user_id does not exist", 404)
         stamp, ident = utcnow().isoformat(), str(uuid4())
         farm = {"id":ident,"name":value["name"],"location":value["location"],"boundary":value["boundary"],"area_hectares":area_hectares(value["boundary"]),"crop":crop,"sowing_date":sowing.isoformat(),"timezone":value.get("timezone","Asia/Kolkata"),"status":"active","created_at":stamp,"updated_at":stamp}
+        if owner_user_id: farm["owner_user_id"] = owner_user_id
         self.repo.farms[ident] = farm
         zone = {"id":str(uuid4()),"farm_id":ident,"name":"Farm zone","geometry":farm["boundary"],"area_hectares":farm["area_hectares"],"zone_method":"manual","status":"active","created_at":stamp,"updated_at":stamp}
         self.repo.zones[zone["id"]] = zone; self.repo.remember("farm", key, fingerprint(value), farm); return farm

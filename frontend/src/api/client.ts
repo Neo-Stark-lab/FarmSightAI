@@ -29,14 +29,27 @@ export class ApiClient {
     return response.json();
   }
 
-  async createFarm(farm: Partial<Farm>, idempotencyKey: string): Promise<{request_id: string, farm: Farm}> {
+  async getUserFarms(userId: string): Promise<{request_id: string, farms: Farm[]}> {
+    if (IS_DEMO_MODE) {
+      await this.delay(500);
+      return { request_id: 'req-list', farms: [fixtures.FIXTURE_FARM] };
+    }
+    const data = await this.fetchBackend(`/users/${userId}/farms`);
+    return { request_id: data.request_id, farms: data.farms };
+  }
+
+  async createFarm(farm: Partial<Farm>, idempotencyKey: string, userId?: string): Promise<{request_id: string, farm: Farm}> {
     if (IS_DEMO_MODE) {
       await this.delay(800);
-      return { request_id: idempotencyKey, farm: { ...fixtures.FIXTURE_FARM, ...farm } as Farm };
+      return { request_id: idempotencyKey, farm: { ...fixtures.FIXTURE_FARM, ...farm, id: String(Date.now()) } as Farm };
+    }
+    const headers: Record<string, string> = { 'Idempotency-Key': idempotencyKey };
+    if (userId) {
+      headers['X-Demo-User-Id'] = userId;
     }
     const data = await this.fetchBackend('/farms', {
       method: 'POST',
-      headers: { 'Idempotency-Key': idempotencyKey },
+      headers,
       body: JSON.stringify(farm)
     });
     return { request_id: data.request_id, farm: data.farm };
