@@ -387,7 +387,7 @@ describe('Premium UI Behavior Tests', () => {
       await waitFor(() => expect(screen.getByText(/What needs attention\?/i)).toBeInTheDocument());
       expect(screen.queryByText(/All zones look healthy/i)).not.toBeInTheDocument();
       // It should display insufficient data
-      expect(screen.getByText(/INSUFFICIENT DATA/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/INSUFFICIENT DATA/i).length).toBeGreaterThan(0);
     });
   });
 });
