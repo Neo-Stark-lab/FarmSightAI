@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import type { Farm, ZoneStatus, AnalysisRun } from '../api/types';
 import DashboardMap from '../components/Map/DashboardMap';
-import { Loader2, AlertTriangle, ArrowRight, RefreshCw, CheckCircle, Info } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowRight, RefreshCw, CheckCircle, Info, XCircle } from 'lucide-react';
 
 export default function DashboardPage() {
   const { farmId } = useParams<{ farmId: string }>();
@@ -27,10 +27,6 @@ export default function DashboardPage() {
       setFarm(farm);
       if (latest_analysis) {
         setRun(latest_analysis);
-        if (latest_analysis.status === 'completed' || latest_analysis.status === 'partial') {
-          const { zones } = await apiClient.getZones(farmId!, latest_analysis.id);
-          setZones(zones);
-        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load farm data.');
@@ -39,26 +35,60 @@ export default function DashboardPage() {
     }
   };
 
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let isSubscribed = true;
+
+    const checkRunState = async () => {
+      if (!run || !farmId || !isSubscribed) return;
+      
+      if (run.status === 'queued' || run.status === 'running') {
+        setAnalyzing(true);
+        timeoutId = setTimeout(async () => {
+          try {
+            const res = await apiClient.getAnalysisRun(run.id);
+            if (isSubscribed) setRun(res.analysis_run);
+          } catch (err: any) {
+            if (isSubscribed) {
+              setError(err.message || 'Polling failed');
+              setAnalyzing(false);
+            }
+          }
+        }, 2000);
+      } else if (run.status === 'completed' || run.status === 'partial') {
+        setAnalyzing(false);
+        try {
+          const { zones: fetchedZones } = await apiClient.getZones(farmId, run.id);
+          if (isSubscribed) setZones(fetchedZones);
+        } catch (err: any) {
+          if (isSubscribed) setError(err.message || 'Failed to fetch zones');
+        }
+      } else if (run.status === 'failed') {
+        setAnalyzing(false);
+      }
+    };
+
+    checkRunState();
+
+    return () => {
+      isSubscribed = false;
+      clearTimeout(timeoutId);
+    };
+  }, [run?.status, run?.id, farmId]);
+
   const analyzeKeyRef = useRef<string | null>(null);
 
   const handleAnalyze = async () => {
     if (!farmId) return;
     try {
       setAnalyzing(true);
+      setError(null);
       if (!analyzeKeyRef.current) {
         analyzeKeyRef.current = crypto.randomUUID();
       }
       const res = await apiClient.analyzeFarm(farmId, analyzeKeyRef.current);
       setRun(res.analysis_run);
-      
-      // On success, clear the key so a future new analysis gets a new key
       analyzeKeyRef.current = null;
-      
-      // Mock polling delay
-      setTimeout(() => {
-        loadFarmData();
-        setAnalyzing(false);
-      }, 2000);
     } catch (err: any) {
       setError(err.message);
       setAnalyzing(false);
@@ -74,7 +104,14 @@ export default function DashboardPage() {
   }
 
   const zonesNeedingAttention = zones.filter(z => 
-    z.latest_prediction?.risk_level === 'high' || z.latest_prediction?.risk_level === 'moderate'
+    z.latest_prediction?.status === 'valid' && 
+    (z.latest_prediction?.risk_level === 'high' || z.latest_prediction?.risk_level === 'moderate')
+  );
+
+  const unknownZones = zones.filter(z => 
+    z.latest_prediction?.status === 'insufficient_data' || 
+    !z.latest_prediction || 
+    z.latest_prediction?.risk_level === 'unknown'
   );
 
   return (
@@ -95,7 +132,7 @@ export default function DashboardPage() {
           className="bg-farm-DEFAULT hover:bg-farm-dark text-white px-6 py-2 rounded-md font-medium shadow flex items-center gap-2 disabled:opacity-70"
         >
           {analyzing ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
-          {analyzing ? 'Analyzing...' : 'Run Analysis'}
+          {analyzing ? 'Analysis in progress...' : 'Run Analysis'}
         </button>
       </div>
 
@@ -104,12 +141,30 @@ export default function DashboardPage() {
           <Info className="text-blue-500 shrink-0 mt-1" />
           <div>
             <h3 className="font-bold text-blue-900">No analysis available yet</h3>
-            <p className="text-blue-800 text-sm mt-1">Click "Run Analysis" to fetch satellite and weather data and generate the digital farm twin.</p>
+            <p className="text-blue-800 text-sm mt-1">Run an analysis to fetch satellite and weather observations.</p>
           </div>
         </div>
       )}
 
-      {run && (
+      {analyzing && run && (run.status === 'queued' || run.status === 'running') && (
+        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 flex items-center justify-center py-12 flex-col gap-4">
+          <Loader2 className="animate-spin text-blue-500" size={48} />
+          <h3 className="font-bold text-blue-900 text-xl">Analysis in progress</h3>
+          <p className="text-blue-800 text-center max-w-md">Fetching satellite, soil-moisture and weather observations...</p>
+        </div>
+      )}
+
+      {run && run.status === 'failed' && (
+        <div className="bg-red-50 p-6 rounded-lg border border-red-200 flex items-start gap-4">
+          <XCircle className="text-red-500 shrink-0 mt-1" />
+          <div>
+            <h3 className="font-bold text-red-900">Analysis could not be completed.</h3>
+            <p className="text-red-800 text-sm mt-1">Please try running the analysis again.</p>
+          </div>
+        </div>
+      )}
+
+      {run && (run.status === 'completed' || run.status === 'partial') && (
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-4">
             <h2 className="text-xl font-bold">Digital Farm Twin</h2>
@@ -130,7 +185,7 @@ export default function DashboardPage() {
               <p className="text-gray-500 italic">No zones generated.</p>
             )}
 
-            {zonesNeedingAttention.length === 0 && zones.length > 0 && (
+            {zonesNeedingAttention.length === 0 && unknownZones.length === 0 && zones.length > 0 && (
               <div className="bg-green-50 p-4 rounded-lg border border-green-200 flex items-center gap-3">
                 <CheckCircle className="text-green-500 shrink-0" />
                 <p className="text-green-800 font-medium">All zones look healthy.</p>
@@ -158,7 +213,7 @@ export default function DashboardPage() {
             {run.status === 'partial' && (
               <div className="mt-6 bg-yellow-50 p-4 border-l-4 border-yellow-400 rounded">
                 <p className="text-yellow-800 text-sm font-medium flex items-center gap-2">
-                  <AlertTriangle size={16} /> Analysis completed partially due to missing upstream data.
+                  <AlertTriangle size={16} /> Analysis completed with some missing or stale supporting data.
                 </p>
               </div>
             )}
