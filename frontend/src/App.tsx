@@ -8,8 +8,9 @@ import FarmSetupPage from './pages/FarmSetupPage';
 import DashboardPage from './pages/DashboardPage';
 import ZoneDetailPage from './pages/ZoneDetailPage';
 import { demoAuth } from './utils/demoPersistence';
+import type { ReactNode } from 'react';
 
-const PrivateRoute = ({ children }: { children: any }) => {
+const PrivateRoute = ({ children }: { children: ReactNode }) => {
   if (!demoAuth.isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
@@ -36,9 +37,9 @@ const Navigation = () => {
             <Link to="/farms" className="text-gray-600 hover:text-farm-DEFAULT font-medium transition-colors">
               My Farms
             </Link>
-            <a href="#" className="text-gray-600 hover:text-farm-DEFAULT font-medium transition-colors">
+            <button onClick={(e) => e.preventDefault()} className="text-gray-600 hover:text-farm-DEFAULT font-medium transition-colors cursor-pointer">
               How it works
-            </a>
+            </button>
           </nav>
         )}
       </div>
