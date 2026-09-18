@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Map as MapIcon, Calendar, ArrowRight, AlertTriangle } from 'lucide-react';
 import { apiClient, IS_DEMO_MODE } from '../api/client';
+import type { Farm } from '../api/types';
 import { demoAuth, demoFarms } from '../utils/demoPersistence';
 
 export default function MyFarmsPage() {

@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sprout, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Sprout, ArrowRight } from 'lucide-react';
 import { demoAuth } from '../utils/demoPersistence';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
 
   // If already authenticated, redirect to /farms
   useEffect(() => {
@@ -15,12 +13,6 @@ export default function LoginPage() {
       navigate('/farms', { replace: true });
     }
   }, [navigate]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    demoAuth.login();
-    navigate('/farms');
-  };
 
   const handleDemoLogin = (userId: string) => {
     demoAuth.login(userId);
