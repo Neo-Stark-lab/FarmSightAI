@@ -16,6 +16,7 @@ vi.mock('../api/client', () => ({
     createFarm: vi.fn(),
     getFarm: vi.fn(),
     analyzeFarm: vi.fn(),
+    getAnalysisRun: vi.fn(),
     getZones: vi.fn(),
     getZoneEvidence: vi.fn(),
     getZoneRecommendation: vi.fn(),
@@ -284,5 +285,93 @@ describe('Lap 5 Behavior Tests', () => {
       expect(screen.getByText(/Missing/)).toBeInTheDocument();
     });
   });
+
+  describe('LIFECYCLE TESTS', () => {
+    it('getFarm preserves latest_analysis', async () => {
+      vi.mocked(apiClient.getFarm).mockResolvedValueOnce({ request_id: '1', farm: FIXTURE_FARM, latest_analysis: FIXTURE_ANALYSIS_RUN });
+      render(
+        <MemoryRouter initialEntries={['/farms/f-1234']}>
+          <Routes>
+            <Route path="/farms/:farmId" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      await waitFor(() => expect(screen.getByText(/Digital Farm Twin/i)).toBeInTheDocument());
+    });
+
+    it('Analysis POST returning queued starts polling', async () => {
+      vi.mocked(apiClient.getFarm).mockResolvedValueOnce({ request_id: '1', farm: FIXTURE_FARM, latest_analysis: undefined });
+      vi.mocked(apiClient.analyzeFarm).mockResolvedValueOnce({ request_id: '1', analysis_run: { ...FIXTURE_ANALYSIS_RUN, status: 'queued' } });
+      vi.mocked(apiClient.getAnalysisRun).mockResolvedValue({ request_id: '1', analysis_run: { ...FIXTURE_ANALYSIS_RUN, status: 'running' } });
+      
+      render(
+        <MemoryRouter initialEntries={['/farms/f-1234']}>
+          <Routes>
+            <Route path="/farms/:farmId" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      
+      await waitFor(() => expect(screen.getByText(/No analysis available yet/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Run Analysis/i }));
+      
+      await waitFor(() => expect(screen.getByText(/Analysis in progress/i)).toBeInTheDocument());
+      await waitFor(() => expect(apiClient.getAnalysisRun).toHaveBeenCalled(), { timeout: 3000 });
+    });
+
+    it('Terminal partial stops polling and requests exact zones', async () => {
+      vi.mocked(apiClient.getFarm).mockResolvedValueOnce({ request_id: '1', farm: FIXTURE_FARM, latest_analysis: { ...FIXTURE_ANALYSIS_RUN, status: 'partial' } });
+      vi.mocked(apiClient.getZones).mockResolvedValueOnce({ request_id: '1', farm_id: 'f-1234', zones: FIXTURE_ZONES });
+      
+      render(
+        <MemoryRouter initialEntries={['/farms/f-1234']}>
+          <Routes>
+            <Route path="/farms/:farmId" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      
+      await waitFor(() => expect(screen.getByText(/missing or stale/i)).toBeInTheDocument());
+      expect(apiClient.getZones).toHaveBeenCalledWith('f-1234', FIXTURE_ANALYSIS_RUN.id);
+      expect(apiClient.getAnalysisRun).not.toHaveBeenCalled();
+    });
+
+    it('Failed analysis stops polling and displays error', async () => {
+      vi.mocked(apiClient.getFarm).mockResolvedValueOnce({ request_id: '1', farm: FIXTURE_FARM, latest_analysis: undefined });
+      vi.mocked(apiClient.analyzeFarm).mockResolvedValueOnce({ request_id: '1', analysis_run: { ...FIXTURE_ANALYSIS_RUN, status: 'queued' } });
+      vi.mocked(apiClient.getAnalysisRun).mockResolvedValue({ request_id: '1', analysis_run: { ...FIXTURE_ANALYSIS_RUN, status: 'failed' } });
+      
+      render(
+        <MemoryRouter initialEntries={['/farms/f-1234']}>
+          <Routes>
+            <Route path="/farms/:farmId" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      
+      await waitFor(() => expect(screen.getByText(/No analysis available yet/i)).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Run Analysis/i }));
+      
+      await waitFor(() => expect(screen.getByText(/Analysis could not be completed/i)).toBeInTheDocument(), { timeout: 3000 });
+    });
+
+    it('Unknown/insufficient-data zones are not presented as healthy', async () => {
+      const mockZones: any = [{ ...FIXTURE_ZONES[0], latest_prediction: { status: 'insufficient_data', prediction_type: 'water_stress', risk_level: 'unknown', probability: null, confidence: { level: 'low', basis: [] } } }];
+      vi.mocked(apiClient.getFarm).mockResolvedValueOnce({ request_id: '1', farm: FIXTURE_FARM, latest_analysis: FIXTURE_ANALYSIS_RUN });
+      vi.mocked(apiClient.getZones).mockResolvedValueOnce({ request_id: '1', farm_id: 'f-1234', zones: mockZones });
+      
+      render(
+        <MemoryRouter initialEntries={['/farms/f-1234']}>
+          <Routes>
+            <Route path="/farms/:farmId" element={<DashboardPage />} />
+          </Routes>
+        </MemoryRouter>
+      );
+      
+      await waitFor(() => expect(screen.getByText(/Digital Farm Twin/i)).toBeInTheDocument());
+      expect(screen.queryByText(/All zones look healthy/i)).not.toBeInTheDocument();
+    });
+  });
 });
+
 

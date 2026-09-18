@@ -48,7 +48,11 @@ export class ApiClient {
       return { request_id: 'req-1', farm: fixtures.FIXTURE_FARM, latest_analysis: fixtures.FIXTURE_ANALYSIS_RUN };
     }
     const data = await this.fetchBackend(`/farms/${farmId}`);
-    return { request_id: data.request_id, farm: data.farm, latest_analysis: undefined };
+    return { 
+      request_id: data.request_id, 
+      farm: data.farm, 
+      latest_analysis: data.latest_analysis ? adaptAnalysisRun(data.latest_analysis) : undefined 
+    };
   }
 
   async analyzeFarm(farmId: string, idempotencyKey: string): Promise<{request_id: string, analysis_run: AnalysisRun}> {
